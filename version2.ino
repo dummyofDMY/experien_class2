@@ -8,14 +8,14 @@
 #define IN_R_A A2
 #define IN_R_B A3
 
-#define SEN0 A4
-#define SEN1 A5
-#define SEN2 6
-#define SEN3 9
+
+#define SEN0 A5
+#define SEN1 6
+#define SEN2 9
+#define SEN3 A4
 #define SEN4 10
 #define SEN5 11
 #define SEN6 12
-#define SEN7 13
 
 #define L_CO_A 2
 #define L_CO_B 4
@@ -34,7 +34,7 @@
 #define KI_W 100
 #define KD_W 0.01
 
-#define V_MAX 10
+#define V_MAX 8
 #define PERIOD 0.01
 #define EVENT_LENGHT 200
 #define CRITIS_LENGHT 200
@@ -55,7 +55,7 @@ double l_e[3] = {-V_MAX, -V_MAX, -V_MAX}; //下标越小越新
 double r_e[3] = {-V_MAX, -V_MAX, -V_MAX}; //下标越小越新
 
 //Sen类遗址
-int data[8] = { 0 };
+int data[7] = { 0 };
 
 //Car类遗址
 int pwm_l = PWM_L, pwm_r = PWM_R, in_l_a = IN_L_A, in_l_b = IN_L_B, in_r_a = IN_R_A, in_r_b = IN_R_B;
@@ -109,7 +109,7 @@ void calculate_r()
 void read()
 {
   data[0] = digitalRead(SEN0); data[1] = digitalRead(SEN1); data[2] = digitalRead(SEN2); data[3] = digitalRead(SEN3);
-  data[4] = digitalRead(SEN4); data[5] = digitalRead(SEN5); data[6] = digitalRead(SEN6); data[7] = digitalRead(SEN7);
+  data[4] = digitalRead(SEN4); data[5] = digitalRead(SEN5); data[6] = digitalRead(SEN6);
   return;
 }
 
@@ -118,7 +118,7 @@ void sen_print()
   Serial.print("Sensor::\t");
   Serial.print(data[0]); Serial.print('\t'); Serial.print(data[1]); Serial.print('\t'); Serial.print(data[2]); Serial.print('\t');
   Serial.print(data[3]); Serial.print('\t'); Serial.print(data[4]); Serial.print('\t'); Serial.print(data[5]); Serial.print('\t'); 
-  Serial.print(data[6]); Serial.print('\t'); Serial.print(data[7]); Serial.print('\t'); 
+  Serial.print(data[6]); Serial.print('\t');
   return;
 }
 
@@ -166,84 +166,86 @@ void place()
 
 void decide_tar_sen()
 {
-    tar_v_l = V_MAX * 0.7;
-    tar_v_r = V_MAX * 0.7;
-    int emerge_l = 0, emerge_r = 0;
-    for (int i = 0; i < 3; ++i) {
-        if (1 == data[i]) {
-            ++emerge_l;
-        }
-        if (1 == data[i + 4]) {
-            ++emerge_r;
-        }
+  int emerge_l = 0, emerge_r = 0;
+  for (int i = 0; i <= 3; ++i) {
+    if (1 == data[i]) {
+      ++emerge_l;
     }
-    if (emerge_l + emerge_r >= 5) {
-        tar_v_l = 0;
-        tar_v_r = 0;
-        if (millis() - init_t >= 40 * 1e3) {
-            place();
-        }
-        return;
+    if (1 == data[i + 3]) {
+      ++emerge_r;
     }
+  }
+  if (emerge_l + emerge_r == 0) {
+    return;
+  }
+  if (emerge_l + emerge_r >= 5) {
+    tar_v_l = 0;
+    tar_v_r = 0;
+    if (millis() - init_t >= 40 * 1e3) {
+      place();
+    }
+    return;
+  }
 
-    if (emerge_l >= 3 /*&& millis() - init_t >= 15 * 1e3 */&& emerge_r <= 0) {
-        tar_v_l = -1.5 * V_MAX;
-        tar_v_r = 1.3 * V_MAX;
-        critis = true;
-        return;
-    }
-    if (emerge_r >= 3 /*&& millis() - init_t >= 15 * 1e3 */&& emerge_l <= 0) {
-        tar_v_l = 1.3 * V_MAX;
-        tar_v_r = -1.5 * V_MAX;
-        critis = true;
-        return;
-    }
-    //四级警报
-    if (1 == data[0]) {
-        tar_v_l = V_MAX * -1;
-        tar_v_r = V_MAX * 1;
-        // event = true;
-        return;
-    }
-    if (1 == data[7]) {
-        tar_v_l = V_MAX * 1;
-        tar_v_r = V_MAX * -1;
-        // event = true;
-        return;
-    }
-    //三级警报
-    if (1 == data[1]) {
-        tar_v_l = V_MAX * -0.4;
-        tar_v_r = V_MAX * 0.6;
-        return;
-    }
-    if (1 == data[6]) {
-        tar_v_l = V_MAX * 0.6;
-        tar_v_r = V_MAX * -0.4;
-        return;
-    }
-    //二级警报
-    if (1 == data[2]) {
-        tar_v_l = V_MAX * -0.3;
-        tar_v_r = V_MAX * 1.1;
-        return;
-    }
-    if (1 == data[5]) {
-        tar_v_l = V_MAX * 1.1;
-        tar_v_r = V_MAX * -0.3;
-        return;
-    }
-    //一级警报
-    if (1 == data[3]) {
-        tar_v_l = V_MAX * 0.2;
-        tar_v_r = V_MAX * 1.1;
-        return;
-    }
-    if (1 == data[4]) {
-        tar_v_l = V_MAX * 1.1;
-        tar_v_r = V_MAX * 0.2;
-        return;
-    }
+  if (emerge_l >= 2 /*&& millis() - init_t >= 15 * 1e3 && emerge_r <= 0*/) {
+    tar_v_l = -2.5 * V_MAX;
+    tar_v_r = 1.3 * V_MAX;
+    return;
+  }
+  if (emerge_r >= 2 /*&& millis() - init_t >= 15 * 1e3 && emerge_l <= 0*/) {
+    tar_v_l = 1.3 * V_MAX;
+    tar_v_r = -2.5 * V_MAX;
+    return;
+  }
+  // //四级警报
+  // if (1 == data[0]) {
+  //   tar_v_l = V_MAX * -1;
+  //   tar_v_r = V_MAX * 1;
+  //   return;
+  // }
+  // if (1 == data[7]) {
+  //   tar_v_l = V_MAX * 1;
+  //   tar_v_r = V_MAX * -1;
+  //   return;
+  // }
+  //三级警报
+  if (1 == data[0]) {
+    tar_v_l = V_MAX * -0.4;
+    tar_v_r = V_MAX * 0.6;
+    return;
+  }
+  if (1 == data[6]) {
+    tar_v_l = V_MAX * 0.6;
+    tar_v_r = V_MAX * -0.4;
+    return;
+  }
+  //二级警报
+  if (1 == data[1]) {
+    tar_v_l = V_MAX * 0.2;
+    tar_v_r = V_MAX * 1;
+    return;
+  }
+  if (1 == data[5]) {
+    tar_v_l = V_MAX * 1;
+    tar_v_r = V_MAX * 0.2;
+    return;
+  }
+  //一级警报
+  if (1 == data[2]) {
+    tar_v_l = V_MAX * 0.5;
+    tar_v_r = V_MAX * 1.2;
+    return;
+  }
+  if (1 == data[4]) {
+    tar_v_l = V_MAX * 1.2;
+    tar_v_r = V_MAX * 0.5;
+    return;
+  }
+  if (1 == data[3]) {
+    tar_v_l = V_MAX;
+    tar_v_r = V_MAX;
+    return;
+  }
 }
 
 void l_pid_print()
@@ -274,7 +276,7 @@ void data_print()
     // if (event) {
     //     Serial.print("!!!\tEVEN\t!!!");
     // }
-    // sen_print();
+    sen_print();
     // step_print();
     // dire.print_out();
     // dire.deep_print();
@@ -309,18 +311,6 @@ void send_cmd()
     digitalWrite(IN_R_B, LOW);
   }
   analogWrite(PWM_R, abs(r_cmd) < 255 ? abs(r_cmd) : 255);
-  if (critis) {
-    MsTimer2::stop();
-    delay(CRITIS_LENGHT);
-    MsTimer2::start();
-    critis = false;
-  }
-  else if (event) {
-    MsTimer2::stop();
-    delay(EVENT_LENGHT);
-    MsTimer2::start();
-    event = false;
-  }
   return;
 }
 
@@ -387,7 +377,6 @@ void setup() {
   pinMode(SEN4, INPUT);
   pinMode(SEN5, INPUT);
   pinMode(SEN6, INPUT);
-  pinMode(SEN7, INPUT);
   pinMode(L_CO_A, INPUT);
   pinMode(L_CO_B, INPUT);
   pinMode(R_CO_A, INPUT);
